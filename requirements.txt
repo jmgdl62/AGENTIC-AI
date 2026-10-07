@@ -1,0 +1,3 @@
+anthropic>=1.11.0
+firecrawl-py>=4.49.0
+python-dotenv>=1.0.0
