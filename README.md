@@ -21,6 +21,12 @@ Claude handles the strategy and writing. [Firecrawl](https://firecrawl.dev) sear
 | `crawl_site` | Reads several pages of one site at once |
 | `save_report` | Saves a finished deliverable to `reports/` |
 
+## Files
+
+- `marketing_agent.py`: the agent (tools, prompt, Claude loop) and the command-line chat
+- `web_app.py`: the web server (FastAPI)
+- `static/index.html`: the web page; `static/vendor/` holds the Markdown libraries so it works offline
+
 ## Setup
 
 ```bash
@@ -34,6 +40,21 @@ You need:
 - A Firecrawl API key: https://firecrawl.dev
 
 ## Run it
+
+### Web interface
+
+```bash
+uvicorn web_app:app --reload
+```
+
+Then open http://127.0.0.1:8000. You get a chat window that shows what the agent is
+searching and reading as it works, starter prompts, and a sidebar with every saved report
+(click one to read it or download it).
+
+Conversations are kept in memory, so they reset when you restart the server.
+The app has no login, so run it on your own computer and don't expose it to the internet.
+
+### Command line
 
 Interactive chat:
 
