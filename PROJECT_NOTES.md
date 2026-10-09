@@ -13,6 +13,9 @@ A marketing agent: Claude does the marketing strategy and writing, and Firecrawl
   `scrape_page`, `map_site`, `crawl_site` (capped at 15 pages) and `save_report` (writes Markdown
   to `reports/`). Pages longer than about 20,000 characters are cut off. If Claude declines a
   request, the API retries it on a fallback model (`fallbacks="default"`).
+- **Prompt caching:** the tools and system prompt have a 1-hour cache breakpoint, and the
+  conversation uses automatic caching (5 minutes). Run with `SHOW_CACHE_STATS=1` to see cached
+  vs. uncached tokens per step. Tested only against a fake API so far.
 - **Command line:** `python marketing_agent.py` to chat, or `python marketing_agent.py "task"`
   for a single task.
 - **Web interface** (`web_app.py` + `static/index.html`): a FastAPI server. The chat page shows

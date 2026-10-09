@@ -72,6 +72,21 @@ One-off task:
 python marketing_agent.py "Compare the pricing pages of notion.so and coda.io and suggest how a new competitor should position itself. Save it as a report."
 ```
 
+## Prompt caching
+
+The agent caches its prompt, which cuts the cost of repeated input by about 95%. Every step of a
+tool loop resends the whole conversation, so without caching you'd pay full price for it each
+time. The tools and instructions stay cached for an hour, and the conversation for 5 minutes
+after the last request.
+
+To check that caching works, start the command-line agent with `SHOW_CACHE_STATS=1`:
+
+```bash
+SHOW_CACHE_STATS=1 python marketing_agent.py "Find 3 competitors of notion.so"
+```
+
+After the first step, most tokens should show as "cached".
+
 ## Example prompts
 
 - "Audit the homepage messaging of https://example.com and rewrite the hero section three ways."

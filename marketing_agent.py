@@ -161,6 +161,13 @@ def save_report(title: str, markdown: str) -> str:
 
 TOOLS = [search_web, scrape_page, map_site, crawl_site, save_report]
 
+# Prompt caching. The tools and system prompt never change, so they get their own cache
+# breakpoint with a 1-hour lifetime: it survives a user taking a while to reply. The growing
+# conversation is cached by the top-level automatic breakpoint (5 minutes), which moves forward
+# on every request, so each step of a tool loop re-reads the history instead of paying for it
+# again. Keep anything that changes per request (dates, IDs) out of SYSTEM, or the cache misses.
+SYSTEM = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral", "ttl": "1h"}}]
+
 
 def _print_event(kind: str, data: dict) -> None:
     if kind == "tool":
@@ -170,19 +177,27 @@ def _print_event(kind: str, data: dict) -> None:
         print(f"\n{data['text']}\n")
     elif kind == "refusal":
         print("\n[The request was declined. Try rephrasing it.]\n")
+    elif kind == "usage" and os.environ.get("SHOW_CACHE_STATS"):
+        print(
+            f"  [tokens: {data['cache_read']} cached, {data['cache_write']} written to cache, "
+            f"{data['uncached']} uncached]",
+            flush=True,
+        )
 
 
 def run_turn(messages: list, on_event: Callable[[str, dict], None] = _print_event) -> None:
     """Run one user turn through the tool runner, appending everything to `messages`.
 
-    Progress is reported through `on_event(kind, data)`, where kind is "tool", "text" or "refusal".
+    Progress is reported through `on_event(kind, data)`, where kind is "tool", "text", "refusal"
+    or "usage" (input-token counts, to check that prompt caching is working).
     """
     runner = client.beta.messages.tool_runner(
         model=MODEL,
         max_tokens=16000,
-        system=SYSTEM_PROMPT,
+        system=SYSTEM,
         tools=TOOLS,
         messages=messages,
+        cache_control={"type": "ephemeral"},
         thinking={"type": "adaptive"},
         output_config={"effort": "high"},
         # If a request is declined by a safety classifier, let the API retry it on a fallback model.
@@ -192,6 +207,12 @@ def run_turn(messages: list, on_event: Callable[[str, dict], None] = _print_even
     for message in runner:
         # The runner keeps its own history, so mirror it here to carry context across turns.
         messages.append({"role": "assistant", "content": message.content})
+        usage = message.usage
+        on_event("usage", {
+            "cache_read": usage.cache_read_input_tokens or 0,
+            "cache_write": usage.cache_creation_input_tokens or 0,
+            "uncached": usage.input_tokens,
+        })
         for block in message.content:
             if block.type == "tool_use":
                 on_event("tool", {"name": block.name, "input": dict(block.input)})
