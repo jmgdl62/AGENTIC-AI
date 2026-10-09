@@ -29,8 +29,12 @@ Claude handles the strategy and writing. [Firecrawl](https://firecrawl.dev) sear
 
 ## Setup
 
+You need Python 3.10 or newer (check with `python3 --version`). The Python that comes with macOS
+is 3.9, which is too old: `pip` then fails with "No matching distribution found for anthropic".
+Install a current Python from https://www.python.org/downloads/ first.
+
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # then add your keys
 ```
