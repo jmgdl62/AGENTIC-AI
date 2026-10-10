@@ -10,6 +10,7 @@ import re
 import sys
 from datetime import date
 from pathlib import Path
+from typing import Callable
 
 import anthropic
 from anthropic import beta_tool
@@ -160,15 +161,43 @@ def save_report(title: str, markdown: str) -> str:
 
 TOOLS = [search_web, scrape_page, map_site, crawl_site, save_report]
 
+# Prompt caching. The tools and system prompt never change, so they get their own cache
+# breakpoint with a 1-hour lifetime: it survives a user taking a while to reply. The growing
+# conversation is cached by the top-level automatic breakpoint (5 minutes), which moves forward
+# on every request, so each step of a tool loop re-reads the history instead of paying for it
+# again. Keep anything that changes per request (dates, IDs) out of SYSTEM, or the cache misses.
+SYSTEM = [{"type": "text", "text": SYSTEM_PROMPT, "cache_control": {"type": "ephemeral", "ttl": "1h"}}]
 
-def run_turn(messages: list) -> None:
-    """Run one user turn through the tool runner, appending everything to `messages`."""
+
+def _print_event(kind: str, data: dict) -> None:
+    if kind == "tool":
+        args = ", ".join(f"{k}={str(v)[:60]!r}" for k, v in data["input"].items() if k != "markdown")
+        print(f"  -> {data['name']}({args})", flush=True)
+    elif kind == "text":
+        print(f"\n{data['text']}\n")
+    elif kind == "refusal":
+        print("\n[The request was declined. Try rephrasing it.]\n")
+    elif kind == "usage" and os.environ.get("SHOW_CACHE_STATS"):
+        print(
+            f"  [tokens: {data['cache_read']} cached, {data['cache_write']} written to cache, "
+            f"{data['uncached']} uncached]",
+            flush=True,
+        )
+
+
+def run_turn(messages: list, on_event: Callable[[str, dict], None] = _print_event) -> None:
+    """Run one user turn through the tool runner, appending everything to `messages`.
+
+    Progress is reported through `on_event(kind, data)`, where kind is "tool", "text", "refusal"
+    or "usage" (input-token counts, to check that prompt caching is working).
+    """
     runner = client.beta.messages.tool_runner(
         model=MODEL,
         max_tokens=16000,
-        system=SYSTEM_PROMPT,
+        system=SYSTEM,
         tools=TOOLS,
         messages=messages,
+        cache_control={"type": "ephemeral"},
         thinking={"type": "adaptive"},
         output_config={"effort": "high"},
         # If a request is declined by a safety classifier, let the API retry it on a fallback model.
@@ -178,14 +207,19 @@ def run_turn(messages: list) -> None:
     for message in runner:
         # The runner keeps its own history, so mirror it here to carry context across turns.
         messages.append({"role": "assistant", "content": message.content})
+        usage = message.usage
+        on_event("usage", {
+            "cache_read": usage.cache_read_input_tokens or 0,
+            "cache_write": usage.cache_creation_input_tokens or 0,
+            "uncached": usage.input_tokens,
+        })
         for block in message.content:
             if block.type == "tool_use":
-                args = ", ".join(f"{k}={str(v)[:60]!r}" for k, v in block.input.items() if k != "markdown")
-                print(f"  -> {block.name}({args})", flush=True)
+                on_event("tool", {"name": block.name, "input": dict(block.input)})
             elif block.type == "text" and message.stop_reason != "tool_use":
-                print(f"\n{block.text}\n")
+                on_event("text", {"text": block.text})
         if message.stop_reason == "refusal":
-            print("\n[The request was declined. Try rephrasing it.]\n")
+            on_event("refusal", {})
         tool_response = runner.generate_tool_call_response()  # cached, so tools still run once
         if tool_response is not None:
             messages.append(tool_response)

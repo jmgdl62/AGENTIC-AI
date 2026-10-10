@@ -21,10 +21,20 @@ Claude handles the strategy and writing. [Firecrawl](https://firecrawl.dev) sear
 | `crawl_site` | Reads several pages of one site at once |
 | `save_report` | Saves a finished deliverable to `reports/` |
 
+## Files
+
+- `marketing_agent.py`: the agent (tools, prompt, Claude loop) and the command-line chat
+- `web_app.py`: the web server (FastAPI)
+- `static/index.html`: the web page; `static/vendor/` holds the Markdown libraries so it works offline
+
 ## Setup
 
+You need Python 3.10 or newer (check with `python3 --version`). The Python that comes with macOS
+is 3.9, which is too old: `pip` then fails with "No matching distribution found for anthropic".
+Install a current Python from https://www.python.org/downloads/ first.
+
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # then add your keys
 ```
@@ -34,6 +44,36 @@ You need:
 - A Firecrawl API key: https://firecrawl.dev
 
 ## Run it
+
+### Web interface
+
+```bash
+uvicorn web_app:app --reload
+```
+
+Then open http://127.0.0.1:8000. You get a chat window that shows what the agent is
+searching and reading as it works, starter prompts, and a sidebar with every saved report
+(click one to read it or download it).
+
+Conversations are kept in memory, so they reset when you restart the server.
+The app has no login, so run it on your own computer and don't expose it to the internet.
+
+### Start it automatically (macOS)
+
+To have the web app start whenever you log in, and restart if it crashes:
+
+```bash
+bash scripts/mac_autostart.sh install     # set up and start now
+bash scripts/mac_autostart.sh status      # is it running?
+bash scripts/mac_autostart.sh restart     # after changing .env or pulling new code
+bash scripts/mac_autostart.sh uninstall   # stop it and remove the auto-start
+```
+
+It needs the `.venv` and `.env` from Setup. It only listens on this Mac (127.0.0.1:8000), and
+logs go to `logs/web_app.log`. Stop any copy you started by hand first (Ctrl+C), since both use
+port 8000.
+
+### Command line
 
 Interactive chat:
 
@@ -46,6 +86,21 @@ One-off task:
 ```bash
 python marketing_agent.py "Compare the pricing pages of notion.so and coda.io and suggest how a new competitor should position itself. Save it as a report."
 ```
+
+## Prompt caching
+
+The agent caches its prompt, which cuts the cost of repeated input by about 95%. Every step of a
+tool loop resends the whole conversation, so without caching you'd pay full price for it each
+time. The tools and instructions stay cached for an hour, and the conversation for 5 minutes
+after the last request.
+
+To check that caching works, start the command-line agent with `SHOW_CACHE_STATS=1`:
+
+```bash
+SHOW_CACHE_STATS=1 python marketing_agent.py "Find 3 competitors of notion.so"
+```
+
+After the first step, most tokens should show as "cached".
 
 ## Example prompts
 

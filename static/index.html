@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marketing Agent</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="/static/vendor/marked.min.js"></script>
+<script src="/static/vendor/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f6f3; --panel: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e4e2dc;
+    --accent: #e8590c; --accent-ink: #ffffff; --accent-soft: #fff1e8; --user: #1d1d1f; --user-ink: #ffffff;
+    --tool: #f1efe9; --error: #c92a2a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416; --panel: #1c1c1f; --ink: #ececee; --muted: #9a9aa1; --line: #2c2c31;
+      --accent: #ff7a2e; --accent-ink: #141416; --accent-soft: #2a1d14; --user: #ececee; --user-ink: #141416;
+      --tool: #232327; --error: #ff6b6b;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.55 Inter, system-ui, sans-serif; display: flex; }
+
+  aside { width: 270px; flex-shrink: 0; border-right: 1px solid var(--line); background: var(--panel);
+          display: flex; flex-direction: column; padding: 18px 14px; gap: 14px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
+  .brand .dot { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-ink);
+                display: grid; place-items: center; font-size: 15px; }
+  .btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 10px;
+         padding: 9px 12px; font: inherit; font-weight: 500; cursor: pointer; text-align: left; text-decoration: none; }
+  .btn:hover { border-color: var(--accent); }
+  .side-title { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  #reports { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  #reports li button { width: 100%; background: none; border: 0; color: var(--ink); font: inherit; font-size: 13.5px;
+                       text-align: left; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+  #reports li button:hover { background: var(--accent-soft); }
+  .empty { color: var(--muted); font-size: 13px; }
+
+  main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #chat { flex: 1; overflow-y: auto; padding: 28px 16px 12px; }
+  .wrap { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+  .welcome { text-align: center; padding: 6vh 0 10px; }
+  .welcome h1 { font-size: 28px; margin: 0 0 6px; letter-spacing: -.02em; }
+  .welcome p { color: var(--muted); margin: 0 0 22px; }
+  .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; text-align: left; }
+  .chip { border: 1px solid var(--line); background: var(--panel); border-radius: 12px; padding: 12px 14px;
+          cursor: pointer; font: inherit; font-size: 14px; color: var(--ink); text-align: left; }
+  .chip:hover { border-color: var(--accent); }
+  .chip b { display: block; margin-bottom: 2px; }
+  .chip span { color: var(--muted); font-size: 13px; }
+
+  .msg { max-width: 100%; }
+  .msg.user { align-self: flex-end; background: var(--user); color: var(--user-ink); padding: 10px 14px;
+              border-radius: 16px 16px 4px 16px; max-width: 85%; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg.agent { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 4px 18px; overflow-wrap: anywhere; }
+  .md table { border-collapse: collapse; display: block; overflow-x: auto; }
+  .md th, .md td { border: 1px solid var(--line); padding: 6px 10px; }
+  .md a { color: var(--accent); }
+  .md pre { background: var(--tool); padding: 10px; border-radius: 8px; overflow-x: auto; }
+  .msg.error { color: var(--error); font-size: 14px; }
+  .tools { display: flex; flex-direction: column; gap: 4px; }
+  .tool { font-size: 13px; color: var(--muted); background: var(--tool); border-radius: 8px; padding: 5px 10px;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tool b { color: var(--ink); font-weight: 600; }
+  .thinking { color: var(--muted); font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent);
+             border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  form { padding: 12px 16px 18px; }
+  .composer { max-width: 780px; margin: 0 auto; display: flex; gap: 8px; background: var(--panel);
+              border: 1px solid var(--line); border-radius: 16px; padding: 8px; }
+  .composer:focus-within { border-color: var(--accent); }
+  textarea { flex: 1; border: 0; outline: 0; resize: none; background: transparent; color: var(--ink);
+             font: inherit; padding: 6px 8px; max-height: 200px; }
+  .send { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 0 16px;
+          font: inherit; font-weight: 600; cursor: pointer; }
+  .send:disabled { opacity: .5; cursor: default; }
+
+  dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink);
+           width: min(860px, calc(100vw - 32px)); max-height: 85vh; padding: 0; }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  .dlg-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px;
+              border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+  .dlg-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dlg-body { padding: 4px 22px 18px; overflow-wrap: anywhere; }
+  .dlg-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  .menu { display: none; }
+  @media (max-width: 760px) {
+    aside { position: fixed; inset: 0 auto 0 0; z-index: 10; transform: translateX(-100%); transition: transform .2s; }
+    aside.open { transform: none; box-shadow: 0 0 40px rgba(0,0,0,.3); }
+    .menu { display: inline-block; position: fixed; top: 10px; left: 10px; z-index: 5; }
+    #chat { padding-top: 56px; }
+  }
+</style>
+</head>
+<body>
+<button class="btn menu" id="menu" aria-label="Open menu">☰</button>
+<aside id="sidebar">
+  <div class="brand"><div class="dot">✦</div>Marketing Agent</div>
+  <button class="btn" id="new-chat">+ New chat</button>
+  <div class="side-title">Saved reports</div>
+  <ul id="reports"></ul>
+</aside>
+
+<main>
+  <div id="chat"><div class="wrap" id="thread">
+    <div class="welcome" id="welcome">
+      <h1>What are we marketing today?</h1>
+      <p>I research the live web with Firecrawl, then write strategy, audits and copy you can use.</p>
+      <div class="chips">
+        <button class="chip" data-prompt="Find the top 5 competitors for an AI bookkeeping app for freelancers and compare their positioning, pricing and headlines. Save it as a report."><b>Competitor research</b><span>Positioning, pricing, headlines</span></button>
+        <button class="chip" data-prompt="Audit the homepage of https://example.com: messaging, clarity, CTAs and SEO basics. Then rewrite the hero section 3 ways."><b>Landing-page audit</b><span>Messaging, CTAs, SEO + rewrites</span></button>
+        <button class="chip" data-prompt="Give me 10 blog post ideas for a vegan meal-kit brand based on what is ranking on Google right now, with a target keyword for each."><b>Content ideas</b><span>Based on what ranks now</span></button>
+        <button class="chip" data-prompt="Write a 3-email launch sequence for a new product. Ask me for the product URL first, then read the site before writing."><b>Email sequence</b><span>Launch emails from your site</span></button>
+      </div>
+    </div>
+  </div></div>
+
+  <form id="form">
+    <div class="composer">
+      <textarea id="input" rows="1" placeholder="Ask for research, an audit, copy, a plan..."></textarea>
+      <button class="send" id="send" type="submit">Send</button>
+    </div>
+  </form>
+</main>
+
+<dialog id="report-dlg">
+  <div class="dlg-head">
+    <strong id="report-title"></strong>
+    <div class="dlg-actions">
+      <a class="btn" id="report-download">Download</a>
+      <button class="btn" id="report-close">Close</button>
+    </div>
+  </div>
+  <div class="dlg-body md" id="report-body"></div>
+</dialog>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const thread = $("thread"), chat = $("chat"), input = $("input"), send = $("send");
+let sessionId = null;
+
+const md = (text) => DOMPurify.sanitize(marked.parse(text || ""));
+const scrollDown = () => { chat.scrollTop = chat.scrollHeight; };
+
+function add(cls, html) {
+  $("welcome")?.remove();
+  const el = document.createElement("div");
+  el.className = cls;
+  if (html !== undefined) el.innerHTML = html;
+  thread.appendChild(el);
+  scrollDown();
+  return el;
+}
+
+const TOOL_LABELS = {
+  search_web: (i) => ["Searching", i.query],
+  scrape_page: (i) => ["Reading", i.url],
+  map_site: (i) => ["Mapping", i.url + (i.search ? ` (${i.search})` : "")],
+  crawl_site: (i) => ["Crawling", i.url],
+  save_report: (i) => ["Saving report", i.title],
+};
+
+async function sendMessage(text) {
+  text = text.trim();
+  if (!text || send.disabled) return;
+  send.disabled = true;
+  input.value = ""; autosize();
+
+  const userEl = add("msg user"); userEl.textContent = text;
+  const tools = add("tools");
+  const status = add("thinking", '<div class="spinner"></div>Working...');
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId, message: text }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Server error ${res.status}`);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, idx); buf = buf.slice(idx + 2);
+        const event = (chunk.match(/^event: (.*)$/m) || [])[1];
+        const data = JSON.parse((chunk.match(/^data: (.*)$/m) || [, "{}"])[1]);
+        handle(event, data, tools, status);
+      }
+    }
+  } catch (e) {
+    thread.insertBefore(Object.assign(document.createElement("div"), { className: "msg error", textContent: e.message }), status);
+  } finally {
+    status.remove();
+    if (!tools.children.length) tools.remove();
+    send.disabled = false;
+    input.focus();
+    loadReports();
+  }
+}
+
+function handle(event, data, tools, status) {
+  if (event === "session") {
+    sessionId = data.session_id;
+  } else if (event === "tool") {
+    const [verb, target] = (TOOL_LABELS[data.name] || ((i) => [data.name, JSON.stringify(i)]))(data.input);
+    const t = document.createElement("div");
+    t.className = "tool";
+    t.innerHTML = `<b></b> `;
+    t.querySelector("b").textContent = verb;
+    t.append(target || "");
+    tools.appendChild(t);
+  } else if (event === "text") {
+    const el = document.createElement("div");
+    el.className = "msg agent md";
+    el.innerHTML = md(data.text);
+    el.querySelectorAll("a").forEach((a) => { a.target = "_blank"; a.rel = "noopener"; });
+    thread.insertBefore(el, status);
+  } else if (event === "refusal") {
+    thread.insertBefore(Object.assign(document.createElement("div"), { className: "msg error", textContent: "The request was declined. Try rephrasing it." }), status);
+  } else if (event === "error") {
+    thread.insertBefore(Object.assign(document.createElement("div"), { className: "msg error", textContent: data.message }), status);
+  }
+  scrollDown();
+}
+
+async function loadReports() {
+  const list = $("reports");
+  try {
+    const reports = await (await fetch("/api/reports")).json();
+    list.innerHTML = reports.length ? "" : '<li class="empty">Reports the agent saves show up here.</li>';
+    for (const r of reports) {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.textContent = r.name.replace(/\.md$/, "");
+      b.onclick = () => openReport(r.name);
+      li.appendChild(b); list.appendChild(li);
+    }
+  } catch { list.innerHTML = '<li class="empty">Could not load reports.</li>'; }
+}
+
+async function openReport(name) {
+  const r = await (await fetch(`/api/reports/${encodeURIComponent(name)}`)).json();
+  $("report-title").textContent = name;
+  $("report-body").innerHTML = md(r.markdown);
+  $("report-download").href = `/api/reports/${encodeURIComponent(name)}?download=true`;
+  $("report-dlg").showModal();
+  $("sidebar").classList.remove("open");
+}
+
+function autosize() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 200) + "px"; }
+
+$("form").addEventListener("submit", (e) => { e.preventDefault(); sendMessage(input.value); });
+input.addEventListener("input", autosize);
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input.value); }
+});
+document.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => sendMessage(c.dataset.prompt)));
+$("report-close").onclick = () => $("report-dlg").close();
+$("menu").onclick = () => $("sidebar").classList.toggle("open");
+$("new-chat").onclick = async () => {
+  if (sessionId) await fetch("/api/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: sessionId, message: "" }) });
+  location.reload();
+};
+loadReports();
+input.focus();
+</script>
+</body>
+</html>
