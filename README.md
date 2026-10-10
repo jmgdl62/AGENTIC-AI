@@ -58,6 +58,21 @@ searching and reading as it works, starter prompts, and a sidebar with every sav
 Conversations are kept in memory, so they reset when you restart the server.
 The app has no login, so run it on your own computer and don't expose it to the internet.
 
+### Start it automatically (macOS)
+
+To have the web app start whenever you log in, and restart if it crashes:
+
+```bash
+bash scripts/mac_autostart.sh install     # set up and start now
+bash scripts/mac_autostart.sh status      # is it running?
+bash scripts/mac_autostart.sh restart     # after changing .env or pulling new code
+bash scripts/mac_autostart.sh uninstall   # stop it and remove the auto-start
+```
+
+It needs the `.venv` and `.env` from Setup. It only listens on this Mac (127.0.0.1:8000), and
+logs go to `logs/web_app.log`. Stop any copy you started by hand first (Ctrl+C), since both use
+port 8000.
+
 ### Command line
 
 Interactive chat:

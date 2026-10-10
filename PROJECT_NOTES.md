@@ -1,6 +1,6 @@
 # Project notes: where we left off
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
 
 ## What this project is
 
@@ -67,11 +67,17 @@ Progress so far, in `~/AGENTIC-AI`:
    grep ANTHROPIC .env | cut -c1-28              # should start with ANTHROPIC_API_KEY=sk-ant-api
    ```
 
-Each time after that:
+Each time after that, either start it by hand:
 ```bash
 cd ~/AGENTIC-AI
 source .venv/bin/activate
 uvicorn web_app:app --reload
+```
+or have it start by itself at every login (`scripts/mac_autostart.sh`, added 2026-10-10, not yet
+tried on a real Mac):
+```bash
+cd ~/AGENTIC-AI
+bash scripts/mac_autostart.sh install    # also: status, restart, uninstall
 ```
 
 ## What hasn't been tested
