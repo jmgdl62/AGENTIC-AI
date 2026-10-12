@@ -27,7 +27,18 @@ Claude handles the strategy and writing. [Firecrawl](https://firecrawl.dev) sear
 - `web_app.py`: the web server (FastAPI)
 - `static/index.html`: the web page; `static/vendor/` holds the Markdown libraries so it works offline
 
-## Setup
+## Quick start
+
+Run this every time you want to use the agent (on a Mac you can also double-click `Start Agentic AI.command`):
+
+```bash
+./start.sh
+```
+
+The first run creates the Python environment, installs the packages and creates `.env` for your keys.
+After that it starts the web app and opens http://127.0.0.1:8000. Press Ctrl+C (or close the Terminal window) to stop it.
+
+## Manual setup
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
